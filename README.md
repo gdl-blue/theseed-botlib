@@ -1,6 +1,5 @@
 # theseed-botlib
-# theseed.js
-더시드엔진 API 라이브러리
+기존 레파지토리에서 강한 실수가 있어서 다시 만듭니다.
 
 ```js
 const Theseed = require('./seed');
