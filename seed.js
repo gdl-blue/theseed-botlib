@@ -5,8 +5,8 @@ const http = require('https');
 require('tls').DEFAULT_MIN_VERSION = 'TLSv1';
 
 const chika = {
-	// 실행 시마다 자동으로 가져오는 방식으로 변경됨(특히 나무위키가 자주 바뀌어서 하드코딩은 부적절함)
-	// 아래 값은 나무위키는 이제 무효임. 나머지도 시간이 지만 무효가 됨
+	// 실행 시마다 자동으로 가져오는 방식으로 변경됨
+	// 아래 값은 무효
 	namuwiki:    '9fe579274e586b950',
 	alphawiki:   '903e1a140dbcd2df8',
 	theseedwiki: '9ba957530204bbf25'
@@ -37,7 +37,7 @@ function theseedRequest(wikiname, host, path, cookie, noInternal) {
 	return new Promise((resolve, reject) => {
 		http.request({
 			host: host,
-			path: (noInternal ? path : '/internal' + path),
+			path: (noInternal ? path : ('/internal' + path)),
 			headers: {
 				"X-Chika": chika[wikiname],
 				"Cookie": cookie,
@@ -74,7 +74,7 @@ function theseedPost(wikiname, host, path, jdata, cookie, returnRes, noInternal)
 		
 		var req = http.request({
 			host: host,
-			path: (noInternal ? path : '/internal' + path),
+			path: (noInternal ? path : ('/internal' + path)),
 			headers: {
 				'X-Chika': chika[wikiname],
 				'Cookie': cookie,
@@ -137,6 +137,9 @@ class Document {
 		return fulltitle;
 	}
 }
+
+var jsnCheckedRecent  = {};
+var jsnCheckedComment = {};
 
 class Thread {
 	constructor(obj, seed) {
@@ -206,6 +209,10 @@ class Theseed {
 		this.commentCount = {};
 		
 		this.host = hosts[thiscls.wikiname];
+		if(!this.host) {
+			throw Error('틀린 위키입니다.');
+			return;
+		}
 		
 		// Chika 값을 가져온다(안하면 편집, 토론 댓글달기 등이 작동하지 않음).
 		http.request({
@@ -235,27 +242,39 @@ class Theseed {
 					});
 					
 					res.on('end', function() {
-						// 스크립트 내용을 통째로 불러와서 'X-Chika':'어쩌구저쩌구' 부분을 찾는다.
-						const _chika = ret.match(/\'X[-]Chika\'[:]\'(((?!\').)+)\'/);
-						chika[thiscls.wikiname] = _chika[1];
+						const _chika = ret.match(/\'X[-]Chika\'[:](((?![,]).)+)/);
+						const toe
+						= ret
+						  .split(ret.match(/;[(]window\[(((?!\]).)+)\]=window\[(((?!\]).)+)\][|][|]\[\][)]\[a/g)[0])[0]
+						  .replace(/^var\s/, 'global.')
+						  .replace(/[)][)][;]var\sa/, '));global.a');
 						
-						thiscls.chika = _chika[1];
-						
-						theseedRequest(thiscls.wikiname, hosts[thiscls.wikiname], '/RecentChanges', thiscls.cookie).then(data => {
-							thiscls.identifier = data.session.identifier;
-							thiscls.ready = true;
+						try {
+							eval(toe);
+							throw 1;
+						} catch(e) {
+							  chika[thiscls.wikiname]
+							= thiscls.chika
+							= eval(_chika[1]);
 							
-							if(onReadyCallback !== null) onReadyCallback();
-						}).catch(err => {
-							throw Error('CSRF 식별자 획득에 실패했읍니다. POST 기능이 작동하지 않습니다.');
-						});
+							theseedRequest(thiscls.wikiname, hosts[thiscls.wikiname], '/RecentChanges', thiscls.cookie).then(data => {
+								thiscls.identifier = data.session.identifier;
+								thiscls.ready = true;
+								
+								if(onReadyCallback !== null) onReadyCallback();
+							}).catch(err => {
+								throw Error('CSRF 식별자 획득에 실패했읍니다. POST 기능이 작동하지 않습니다.');
+							});
+						}
 					});
 				}).end();
 			});
 		}).end();
 		
 		// 봇이 꺼지지 않게...
-		setInterval(() => {}, 60000);
+		setInterval(() => {
+			for(var i=0; i<10; i++);
+		}, 2147483647);  // 24,855일동안 실행 가능
 	}
 	
 	recentChanges(flag) {
@@ -324,6 +343,8 @@ class Theseed {
 		if(!id) {
 			throw Error('댓글 번호를 명시하시오.'); return;
 		}
+		
+		const thiscls = this;
 		
 		return new Promise((resolve, reject) => {
 			theseedRequest(this.wikiname, hosts[this.wikiname], '/thread/' + slug + '/' + id, this.cookie).then(data => {
@@ -540,19 +561,26 @@ class Theseed {
 				thisClass.changeWatcher = setInterval(function() {
 					if(thisClass.ready) {
 						thisClass.recentChanges().then(data => {
-							const firstItem = data[0];
+							var firstItem = data[0];
 							
 							if(typeof thisClass.lastChangedTime === 'undefined') {
 								thisClass.lastChangedTime = 0;
 							} else {
-								if(firstItem && firstItem.datetime > thisClass.lastChangedTime) {
-									thisClass.lastChangedTime = firstItem.datetime;
-									cb(firstItem);
+								if(!jsnCheckedRecent[firstItem.title + firstItem.rev]) {
+									jsnCheckedRecent[firstItem.title + firstItem.rev] = 1;
+								} else {
+									if(firstItem && firstItem.datetime > thisClass.lastChangedTime) {
+										thisClass.lastChangedTime = firstItem.datetime;
+										thisClass.fetchRAW(firstItem.document.fulltitle).then(raw => {
+											firstItem['content'] = raw;
+											cb(firstItem);
+										});
+									}
 								}
 							}
 						});
 					}
-				}, 3000);
+				}, 1000);
 			break; case 'ready':
 				onReadyCallback = cb;
 			break; case 'comment':
@@ -562,7 +590,9 @@ class Theseed {
 					
 					if(thisClass.ready) {
 						if(!commentCount) {
-							thisClass.commentCount[slug] = 1;
+							thisClass.fetchDiscuss(slug).then(data => {
+								thisClass.commentCount[slug] = data.commentCount;
+							});
 						} else {
 							thisClass.fetchDiscuss(slug).then(data => {
 								if(data.commentCount > commentCount) {
@@ -575,7 +605,7 @@ class Theseed {
 							});
 						}
 					}
-				}, 2000);
+				}, 1100);
 		}
 	}
 	
@@ -612,6 +642,20 @@ class Theseed {
 		return new Promise((resolve, reject) => {
 			theseedRequest(this.wikiname, hosts[this.wikiname], '/raw/' + encodeURIComponent(title) + (rev ? '?rev=' + rev : ''), this.cookie).then(data => {
 				resolve(data.data.text);
+			}).catch(err => {
+				reject(err);
+			});
+		});
+	}
+	
+	exists(title) {
+		if(!title) {
+			throw Error('제목이 없습니다.');
+		}
+		
+		return new Promise((resolve, reject) => {
+			theseedRequest(this.wikiname, hosts[this.wikiname], '/w/' + encodeURIComponent(title), this.cookie).then(data => {
+				resolve(data.status == 200);
 			}).catch(err => {
 				reject(err);
 			});
@@ -808,7 +852,7 @@ class Theseed {
 			theseedPost(this.wikiname, hosts[this.wikiname], '/acl/' + encodeURIComponent(title), {
 				mode: mode,
 				type: type,
-				isND: isns ? 'Y' : undefined,
+				isNS: isns ? 'Y' : undefined,
 				condition: condition,
 				action: action,
 				expire: String(expiration),
@@ -902,7 +946,8 @@ class Theseed {
 							} catch(e) {}
 							
 							theseedPost(thiscls.wikiname, hosts[thiscls.wikiname], '/member/login/pin', {
-								pin: (pin ? String(pin) : '111111')
+								pin: (pin ? String(pin) : '111111'),
+								trust: 'on'
 							}, thiscls.cookie, 1).then(resp => {
 								const cookies = resp.res.headers['set-cookie'];
 								const jsn = resp.json;
@@ -998,6 +1043,43 @@ class Theseed {
 			theseedRequest(this.wikiname, hosts[this.wikiname], url ? url : '/RecentChanges', this.cookie).then(data => {
 				resolve(data);
 			});
+		});
+	}
+	
+	render(content) {
+		// /internal/preview
+	}
+	
+	exportHistory(title, jsonpath) {
+		const thiscls = this;
+		var ret = [];
+		
+		return new Promise((resolve, reject) => {
+			thiscls.history(title).then(data => {
+				if(!data.length) return resolve([]);
+				const historysize = Number(data[0]['rev']);
+				
+				function recursive(until) {
+					thiscls.history(title, { until: until }).then(d => {
+						ret = ret.concat(d);
+						if(historysize < until) {
+							ret.sort(function(l, r) {
+								return l['rev'] - r['rev'];
+							});
+							
+							if(jsonpath) {
+								require('fs').writeFile(jsonpath, JSON.stringify(ret), () => resolve(ret));
+							} else {
+								resolve(ret);
+							}
+						} else {
+							setTimeout(() => recursive(until + 30), 300);
+						}
+					}).catch(reject);
+				}
+				
+				setTimeout(() => recursive(1), 300);
+			}).catch(reject);
 		});
 	}
 	
