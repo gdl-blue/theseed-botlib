@@ -580,7 +580,7 @@ class Theseed {
                             }
                         });
                     }
-                }, 1000);
+                }, 500);
             break; case 'ready':
                 onReadyCallback = cb;
             break; case 'comment':
