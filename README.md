@@ -16,7 +16,7 @@ const theseed = Theseed('theseedwiki');  // 혹은 3, 't', 'theseed'
 // 준비가 완료(Chika 및 identifier 획득 성공)되었을 때...
 alpha.on('ready', async () => {
   //                  ID       비밀번호
-  await alpha.login('gnote8_0', '...');  // 로그인하지 않으면 IP로 활동하게 됨.
+  await alpha.login('...', '...');  // 로그인하지 않으면 IP로 활동하게 됨.
 
   //                            토론 ID                    댓글 내용
   alpha.comment('BurlyMakeshiftBelligerentTrade', '댓글 테스트');
