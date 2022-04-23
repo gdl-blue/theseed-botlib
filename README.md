@@ -21,7 +21,7 @@ alpha.on('ready', async () => {
   //                            토론 ID                    댓글 내용
   alpha.comment('BurlyMakeshiftBelligerentTrade', '댓글 테스트');
   //             문서 제목         내용    3번째는 수정 코멘트, 4번째 인자로는 section 가능
-  alpha.edit('사용자:GNote8_0', 'API 테스트');
+  alpha.edit('연습장', 'API 테스트');
   
   const html = await alpha.fetchHTML('문서명');  // 두번째 인자: 리비전; fetchRAW도 있음
   alpha.edit('문서명', html.replace(/됬/g, '됐'), '올바른 맞춤법으로 수정');
