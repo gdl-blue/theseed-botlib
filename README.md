@@ -1,9 +1,9 @@
-[[옥텟트 스트림은 지원하지 않습니다. 공개적인 API가 만들어지기는 하는 것 같으므로 나중에 다시 만들겠읍니다]]
+[[옥텟트 스트림은 지원하지 않는다. 공개적인 API가 만들어지기는 하는 것 같으므로 나중에 다시 만들 것이다.]]
 
 # theseed-botlib
-- 기존 레파지토리에서 강한 실수가 있어서 다시 만듭니다.
-- 4.18.2에 대응하여 2020-11-15 현재 사용 가능한 상태입니다.
-- 원래 이름이 theseed.js이었으나 the seed 4.12.0까지 사용된 그 스크립트와 헷갈릴 여지가 있어 변경하였습니다.
+- 기존 레파지토리에서 강한 실수가 있어서 다시 만든다.
+- 4.18.2에 대응하여 2020-11-15 현재 사용 가능한 상태이다.
+- 원래 이름이 theseed.js이었으나 the seed 4.12.0까지 사용된 그 스크립트와 헷갈릴 여지가 있어 변경했다.
 
 ```js
 const Theseed = require('./seed');
@@ -27,7 +27,7 @@ alpha.on('ready', async () => {
   alpha.edit('문서명', html.replace(/됬/g, '됐'), '올바른 맞춤법으로 수정');
   
   //              문서 제목       리비전   수정코멘트
-  alpha.revert('사용자:GNote8_0', '12', '<API>').then(console.log);
+  alpha.revert('연습장', '12', '<API>').then(console.log);
 
   //                제목         작업
   alpha.getacl('알파위키:사랑방', 'edit').then(console.log);
@@ -68,6 +68,6 @@ alpha.on('comment', 'BurlyMakeshiftBelligerentTrade', function(comment) {
 });
 ```
 
-2FA PIN 처리는 직접 입력하는 방식만 가능합니다(DTFL 권한이 있으면 해당사항 없음)
+2FA PIN 처리는 직접 입력하는 방식만 가능하다(DTFL 권한이 있으면 해당사항 없음).
 
-Windows XP나 Vista에서도 사용 가능합니다(Node.js 5.12.0).
+Node.js 5.12.0 이상에서 사용 가능하다.
